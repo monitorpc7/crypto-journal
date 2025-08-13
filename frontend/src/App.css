@@ -13,10 +13,26 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8fafc;
+  transition: background-color 0.3s ease;
+}
+
+/* Dark mode styles */
+body.dark {
+  background: #0f172a;
+  color: #f1f5f9;
 }
 
 .App {
   min-height: 100vh;
+}
+
+/* Dark mode global styles */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
 }
 
 /* Custom scrollbar styles */
@@ -27,7 +43,10 @@ body {
 
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
-  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #334155;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -35,8 +54,16 @@ body {
   border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #64748b;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 /* Smooth transitions for interactive elements */
@@ -56,6 +83,10 @@ input:focus, textarea:focus, select:focus {
 .table-row-hover:hover {
   background-color: rgba(248, 250, 252, 0.8);
   backdrop-filter: blur(4px);
+}
+
+.dark .table-row-hover:hover {
+  background-color: rgba(51, 65, 85, 0.5);
 }
 
 /* Animation classes */
@@ -79,12 +110,25 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .slide-in-up {
   animation: slideInUp 0.3s ease-out;
 }
 
 .fade-in {
   animation: fadeIn 0.2s ease-out;
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Glass morphism effect for cards */
@@ -95,9 +139,22 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
 /* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -115,6 +172,14 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
+.dark .btn-gradient {
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.dark .btn-gradient:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+}
+
 /* Loading spinner */
 .spinner {
   width: 20px;
@@ -123,6 +188,11 @@ input:focus, textarea:focus, select:focus {
   border-top: 2px solid #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.dark .spinner {
+  border: 2px solid #374151;
+  border-top: 2px solid #60a5fa;
 }
 
 @keyframes spin {
@@ -165,15 +235,27 @@ input:focus, textarea:focus, select:focus {
   color: #64748b;
 }
 
+.dark .custom-table th {
+  color: #94a3b8;
+}
+
 .custom-table td {
   font-size: 0.875rem;
   color: #334155;
+}
+
+.dark .custom-table td {
+  color: #cbd5e1;
 }
 
 /* Modal backdrop */
 .modal-backdrop {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
+}
+
+.dark .modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 /* Success/Error states */
@@ -183,10 +265,22 @@ input:focus, textarea:focus, select:focus {
   border-color: #a7f3d0;
 }
 
+.dark .success-state {
+  color: #34d399;
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
 .error-state {
   color: #dc2626;
   background-color: #fef2f2;
   border-color: #fecaca;
+}
+
+.dark .error-state {
+  color: #f87171;
+  background-color: rgba(220, 38, 38, 0.1);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 /* Card hover effects */
@@ -199,6 +293,10 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
+.dark .hover-lift:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
 /* Improved focus rings */
 .focus-ring:focus {
   outline: none;
@@ -206,8 +304,142 @@ input:focus, textarea:focus, select:focus {
   border-color: #3b82f6;
 }
 
+.dark .focus-ring:focus {
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  border-color: #60a5fa;
+}
+
 /* Stats animation */
 .stats-number {
   font-variant-numeric: tabular-nums;
   transition: all 0.3s ease;
+}
+
+/* Price dashboard styles */
+.price-tile {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.price-tile:hover {
+  transform: scale(1.02);
+}
+
+/* Crypto-specific styles */
+.crypto-symbol {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.price-positive {
+  color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+}
+
+.dark .price-positive {
+  color: #34d399;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
+}
+
+.price-negative {
+  color: #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+}
+
+.dark .price-negative {
+  color: #f87171;
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.1));
+}
+
+/* Theme toggle styles */
+.theme-toggle {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom select styles for dark mode */
+.dark select {
+  background-color: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+.dark select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+/* Form input dark mode styles */
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="date"],
+.dark textarea {
+  background-color: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="number"]:focus,
+.dark input[type="date"]:focus,
+.dark textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+/* Dark mode placeholder text */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Enhanced transition for theme switching */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Crypto pair highlighting */
+.crypto-pair {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 600;
+  font-size: 0.9em;
+  letter-spacing: 0.025em;
+}
+
+/* Live price indicator */
+.live-price {
+  position: relative;
+}
+
+.live-price::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+/* Improved mobile responsiveness */
+@media (max-width: 768px) {
+  .crypto-dashboard {
+    padding: 1rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .price-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .trade-table {
+    font-size: 0.875rem;
+  }
 }

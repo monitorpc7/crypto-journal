@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime, date
 import base64
 from enum import Enum
+import aiohttp
+import asyncio
 
 
 ROOT_DIR = Path(__file__).parent
@@ -33,12 +35,13 @@ class TradeType(str, Enum):
     LONG = "Long"
     SHORT = "Short"
 
-class Trade(BaseModel):
+class CryptoTrade(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    symbol: str
+    pair: str  # e.g., BTC/USDT, ETH/USDT
     entry_price: float
     exit_price: Optional[float] = None
-    quantity: int
+    usd_amount: float  # Amount in USD invested
+    quantity: float  # Calculated automatically
     trade_date: date
     pnl: Optional[float] = None
     strategy: str
@@ -50,11 +53,11 @@ class Trade(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class TradeCreate(BaseModel):
-    symbol: str
+class CryptoTradeCreate(BaseModel):
+    pair: str
     entry_price: float
     exit_price: Optional[float] = None
-    quantity: int
+    usd_amount: float
     trade_date: date
     pnl: Optional[float] = None
     strategy: str
@@ -64,11 +67,11 @@ class TradeCreate(BaseModel):
     notes: Optional[str] = None
     image_data: Optional[str] = None
 
-class TradeUpdate(BaseModel):
-    symbol: Optional[str] = None
+class CryptoTradeUpdate(BaseModel):
+    pair: Optional[str] = None
     entry_price: Optional[float] = None
     exit_price: Optional[float] = None
-    quantity: Optional[int] = None
+    usd_amount: Optional[float] = None
     trade_date: Optional[date] = None
     pnl: Optional[float] = None
     strategy: Optional[str] = None
@@ -78,37 +81,81 @@ class TradeUpdate(BaseModel):
     notes: Optional[str] = None
     image_data: Optional[str] = None
 
-class TradeResponse(BaseModel):
-    trades: List[Trade]
+class CryptoTradeResponse(BaseModel):
+    trades: List[CryptoTrade]
     total: int
     page: int
     limit: int
     total_pages: int
 
-# Trade Routes
-@api_router.post("/trades", response_model=Trade)
-async def create_trade(trade: TradeCreate):
+class TickerData(BaseModel):
+    symbol: str
+    lastPrice: str
+    priceChange: str
+    priceChangePercent: str
+    highPrice: str
+    lowPrice: str
+    volume: str
+
+# MEXC API Integration
+async def fetch_mexc_ticker(symbol: str = None):
+    """Fetch 24h ticker data from MEXC API"""
+    url = "https://api.mexc.com/api/v3/ticker/24hr"
+    params = {}
+    if symbol:
+        params["symbol"] = symbol.replace("/", "")  # Convert BTC/USDT to BTCUSDT
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data
+                else:
+                    return None
+    except Exception as e:
+        print(f"Error fetching MEXC data: {e}")
+        return None
+
+# Helper function to calculate quantity
+def calculate_quantity(usd_amount: float, entry_price: float) -> float:
+    """Calculate crypto quantity based on USD amount and entry price"""
+    return usd_amount / entry_price
+
+# Helper function to calculate P&L
+def calculate_pnl(trade_type: str, entry_price: float, exit_price: float, quantity: float) -> float:
+    """Calculate P&L based on trade type"""
+    if trade_type == TradeType.LONG:
+        return (exit_price - entry_price) * quantity
+    else:  # SHORT
+        return (entry_price - exit_price) * quantity
+
+# Crypto Trade Routes
+@api_router.post("/trades", response_model=CryptoTrade)
+async def create_trade(trade: CryptoTradeCreate):
     trade_dict = trade.dict()
-    trade_obj = Trade(**trade_dict)
+    
+    # Calculate quantity automatically
+    quantity = calculate_quantity(trade.usd_amount, trade.entry_price)
+    trade_dict["quantity"] = quantity
+    
+    trade_obj = CryptoTrade(**trade_dict)
     
     # Calculate P&L if exit_price is provided
     if trade_obj.exit_price and trade_obj.entry_price:
-        if trade_obj.trade_type == TradeType.LONG:
-            trade_obj.pnl = (trade_obj.exit_price - trade_obj.entry_price) * trade_obj.quantity
-        else:  # SHORT
-            trade_obj.pnl = (trade_obj.entry_price - trade_obj.exit_price) * trade_obj.quantity
+        trade_obj.pnl = calculate_pnl(trade_obj.trade_type, trade_obj.entry_price, trade_obj.exit_price, trade_obj.quantity)
     
     # Convert trade_obj to dict and handle date serialization
     trade_data = trade_obj.dict()
     if isinstance(trade_data['trade_date'], date):
         trade_data['trade_date'] = trade_data['trade_date'].isoformat()
     
-    result = await db.trades.insert_one(trade_data)
+    result = await db.crypto_trades.insert_one(trade_data)
     if result.inserted_id:
         return trade_obj
     raise HTTPException(status_code=500, detail="Failed to create trade")
 
-@api_router.get("/trades", response_model=TradeResponse)
+@api_router.get("/trades", response_model=CryptoTradeResponse)
 async def get_trades(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
@@ -126,7 +173,7 @@ async def get_trades(
     filter_query = {}
     
     if search:
-        filter_query["symbol"] = {"$regex": search, "$options": "i"}
+        filter_query["pair"] = {"$regex": search, "$options": "i"}
     
     if strategy:
         filter_query["strategy"] = {"$regex": strategy, "$options": "i"}
@@ -155,17 +202,17 @@ async def get_trades(
     sort_query = [(sort_by, sort_direction)]
     
     # Get total count
-    total = await db.trades.count_documents(filter_query)
+    total = await db.crypto_trades.count_documents(filter_query)
     
     # Get paginated results
     skip = (page - 1) * limit
-    trades_cursor = db.trades.find(filter_query).sort(sort_query).skip(skip).limit(limit)
+    trades_cursor = db.crypto_trades.find(filter_query).sort(sort_query).skip(skip).limit(limit)
     trades_list = await trades_cursor.to_list(length=limit)
     
-    trades = [Trade(**trade) for trade in trades_list]
+    trades = [CryptoTrade(**trade) for trade in trades_list]
     total_pages = (total + limit - 1) // limit
     
-    return TradeResponse(
+    return CryptoTradeResponse(
         trades=trades,
         total=total,
         page=page,
@@ -173,17 +220,17 @@ async def get_trades(
         total_pages=total_pages
     )
 
-@api_router.get("/trades/{trade_id}", response_model=Trade)
+@api_router.get("/trades/{trade_id}", response_model=CryptoTrade)
 async def get_trade(trade_id: str):
-    trade_doc = await db.trades.find_one({"id": trade_id})
+    trade_doc = await db.crypto_trades.find_one({"id": trade_id})
     if not trade_doc:
         raise HTTPException(status_code=404, detail="Trade not found")
-    return Trade(**trade_doc)
+    return CryptoTrade(**trade_doc)
 
-@api_router.put("/trades/{trade_id}", response_model=Trade)
-async def update_trade(trade_id: str, trade_update: TradeUpdate):
+@api_router.put("/trades/{trade_id}", response_model=CryptoTrade)
+async def update_trade(trade_id: str, trade_update: CryptoTradeUpdate):
     # Get existing trade
-    existing_trade = await db.trades.find_one({"id": trade_id})
+    existing_trade = await db.crypto_trades.find_one({"id": trade_id})
     if not existing_trade:
         raise HTTPException(status_code=404, detail="Trade not found")
     
@@ -195,34 +242,37 @@ async def update_trade(trade_id: str, trade_update: TradeUpdate):
     if "trade_date" in update_data and isinstance(update_data["trade_date"], date):
         update_data["trade_date"] = update_data["trade_date"].isoformat()
     
+    # Recalculate quantity if USD amount or entry price changed
+    if "usd_amount" in update_data or "entry_price" in update_data:
+        usd_amount = update_data.get("usd_amount", existing_trade["usd_amount"])
+        entry_price = update_data.get("entry_price", existing_trade["entry_price"])
+        update_data["quantity"] = calculate_quantity(usd_amount, entry_price)
+    
     # Recalculate P&L if prices are updated
-    if "exit_price" in update_data or "entry_price" in update_data or "quantity" in update_data:
+    if "exit_price" in update_data or "entry_price" in update_data or "usd_amount" in update_data:
         entry_price = update_data.get("entry_price", existing_trade["entry_price"])
         exit_price = update_data.get("exit_price", existing_trade.get("exit_price"))
         quantity = update_data.get("quantity", existing_trade["quantity"])
         trade_type = update_data.get("trade_type", existing_trade["trade_type"])
         
         if exit_price and entry_price:
-            if trade_type == TradeType.LONG:
-                update_data["pnl"] = (exit_price - entry_price) * quantity
-            else:  # SHORT
-                update_data["pnl"] = (entry_price - exit_price) * quantity
+            update_data["pnl"] = calculate_pnl(trade_type, entry_price, exit_price, quantity)
     
     # Update trade
-    result = await db.trades.update_one(
+    result = await db.crypto_trades.update_one(
         {"id": trade_id},
         {"$set": update_data}
     )
     
     if result.modified_count:
-        updated_trade = await db.trades.find_one({"id": trade_id})
-        return Trade(**updated_trade)
+        updated_trade = await db.crypto_trades.find_one({"id": trade_id})
+        return CryptoTrade(**updated_trade)
     
     raise HTTPException(status_code=500, detail="Failed to update trade")
 
 @api_router.delete("/trades/{trade_id}")
 async def delete_trade(trade_id: str):
-    result = await db.trades.delete_one({"id": trade_id})
+    result = await db.crypto_trades.delete_one({"id": trade_id})
     if result.deleted_count:
         return {"message": "Trade deleted successfully"}
     raise HTTPException(status_code=404, detail="Trade not found")
@@ -235,6 +285,7 @@ async def get_trade_stats():
                 "_id": None,
                 "total_trades": {"$sum": 1},
                 "total_pnl": {"$sum": "$pnl"},
+                "total_invested": {"$sum": "$usd_amount"},
                 "winning_trades": {
                     "$sum": {"$cond": [{"$gt": ["$pnl", 0]}, 1, 0]}
                 },
@@ -246,32 +297,83 @@ async def get_trade_stats():
         }
     ]
     
-    result = await db.trades.aggregate(pipeline).to_list(1)
+    result = await db.crypto_trades.aggregate(pipeline).to_list(1)
     if result:
         stats = result[0]
         win_rate = (stats["winning_trades"] / stats["total_trades"] * 100) if stats["total_trades"] > 0 else 0
+        roi = (stats["total_pnl"] / stats["total_invested"] * 100) if stats["total_invested"] > 0 else 0
         return {
             "total_trades": stats["total_trades"],
             "total_pnl": round(stats["total_pnl"] or 0, 2),
+            "total_invested": round(stats["total_invested"] or 0, 2),
             "winning_trades": stats["winning_trades"],
             "losing_trades": stats["losing_trades"],
             "win_rate": round(win_rate, 2),
-            "avg_pnl": round(stats["avg_pnl"] or 0, 2)
+            "avg_pnl": round(stats["avg_pnl"] or 0, 2),
+            "roi": round(roi, 2)
         }
     
     return {
         "total_trades": 0,
         "total_pnl": 0,
+        "total_invested": 0,
         "winning_trades": 0,
         "losing_trades": 0,
         "win_rate": 0,
-        "avg_pnl": 0
+        "avg_pnl": 0,
+        "roi": 0
     }
+
+# MEXC API Routes
+@api_router.get("/mexc/ticker")
+async def get_mexc_ticker(symbols: str = Query(..., description="Comma-separated crypto pairs (e.g., BTC/USDT,ETH/USDT)")):
+    """Get 24h ticker data for specified crypto pairs from MEXC"""
+    pairs = [s.strip() for s in symbols.split(",")]
+    tickers = []
+    
+    for pair in pairs:
+        ticker_data = await fetch_mexc_ticker(pair)
+        if ticker_data:
+            # Handle both single ticker and list response
+            if isinstance(ticker_data, list):
+                for ticker in ticker_data:
+                    if ticker.get("symbol") == pair.replace("/", ""):
+                        tickers.append({
+                            "symbol": pair,
+                            "lastPrice": float(ticker.get("lastPrice", 0)),
+                            "priceChange": float(ticker.get("priceChange", 0)),
+                            "priceChangePercent": float(ticker.get("priceChangePercent", 0)),
+                            "highPrice": float(ticker.get("highPrice", 0)),
+                            "lowPrice": float(ticker.get("lowPrice", 0)),
+                            "volume": float(ticker.get("volume", 0))
+                        })
+                        break
+            else:
+                tickers.append({
+                    "symbol": pair,
+                    "lastPrice": float(ticker_data.get("lastPrice", 0)),
+                    "priceChange": float(ticker_data.get("priceChange", 0)),
+                    "priceChangePercent": float(ticker_data.get("priceChangePercent", 0)),
+                    "highPrice": float(ticker_data.get("highPrice", 0)),
+                    "lowPrice": float(ticker_data.get("lowPrice", 0)),
+                    "volume": float(ticker_data.get("volume", 0))
+                })
+    
+    return {"tickers": tickers}
+
+@api_router.get("/mexc/popular-pairs")
+async def get_popular_pairs():
+    """Get popular crypto pairs for the dashboard"""
+    popular_pairs = ["BTC/USDT", "ETH/USDT", "BNB/USDT", "ADA/USDT", "SOL/USDT", "MATIC/USDT", "DOT/USDT", "AVAX/USDT"]
+    symbols_param = ",".join(popular_pairs)
+    
+    result = await get_mexc_ticker(symbols_param)
+    return result
 
 # Legacy routes for testing
 @api_router.get("/")
 async def root():
-    return {"message": "Trading Journal API"}
+    return {"message": "Crypto Trading Journal API"}
 
 # Include the router in the main app
 app.include_router(api_router)
