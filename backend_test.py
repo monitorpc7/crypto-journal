@@ -4,7 +4,7 @@ import json
 from datetime import datetime, date
 from typing import Dict, Any
 
-class TradingJournalAPITester:
+class CryptoTradingJournalAPITester:
     def __init__(self, base_url="https://trade-journal-41.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
@@ -39,6 +39,7 @@ class TradingJournalAPITester:
                     response_data = response.json()
                     if method == 'POST' and 'id' in response_data:
                         print(f"   Created ID: {response_data['id']}")
+                        print(f"   Calculated Quantity: {response_data.get('quantity', 'N/A')}")
                     return True, response_data
                 except:
                     return True, {}
@@ -59,10 +60,10 @@ class TradingJournalAPITester:
         """Test API root endpoint"""
         return self.run_test("API Root", "GET", "", 200)
 
-    def test_create_trade(self, trade_data: Dict[str, Any]):
-        """Test creating a trade"""
+    def test_create_crypto_trade(self, trade_data: Dict[str, Any]):
+        """Test creating a crypto trade"""
         success, response = self.run_test(
-            f"Create Trade ({trade_data['symbol']})",
+            f"Create Crypto Trade ({trade_data['pair']})",
             "POST",
             "trades",
             200,
@@ -75,7 +76,7 @@ class TradingJournalAPITester:
 
     def test_get_trades(self, params: Dict[str, str] = None):
         """Test getting trades with optional filters"""
-        test_name = "Get Trades"
+        test_name = "Get Crypto Trades"
         if params:
             test_name += f" (with filters: {params})"
         
@@ -125,102 +126,133 @@ class TradingJournalAPITester:
             200
         )
 
+    def test_mexc_popular_pairs(self):
+        """Test MEXC popular pairs endpoint"""
+        return self.run_test(
+            "Get MEXC Popular Pairs",
+            "GET",
+            "mexc/popular-pairs",
+            200
+        )
+
+    def test_mexc_ticker(self, symbols: str):
+        """Test MEXC ticker endpoint"""
+        return self.run_test(
+            f"Get MEXC Ticker ({symbols})",
+            "GET",
+            "mexc/ticker",
+            200,
+            params={"symbols": symbols}
+        )
+
 def main():
-    print("🚀 Starting Trading Journal API Tests")
+    print("🚀 Starting Crypto Trading Journal API Tests")
     print("=" * 50)
     
-    tester = TradingJournalAPITester()
+    tester = CryptoTradingJournalAPITester()
     
     # Test 1: API Root
     tester.test_api_root()
     
-    # Test 2: Get initial stats (should be empty)
+    # Test 2: Test MEXC API Integration
+    print("\n🌐 Testing MEXC API Integration...")
+    tester.test_mexc_popular_pairs()
+    tester.test_mexc_ticker("BTC/USDT,ETH/USDT")
+    
+    # Test 3: Get initial stats (should be empty)
     print("\n📊 Testing initial stats...")
     tester.test_get_stats()
     
-    # Test 3: Get trades (should be empty initially)
+    # Test 4: Get trades (should be empty initially)
     print("\n📋 Testing empty trades list...")
     tester.test_get_trades()
     
-    # Test 4: Create sample trades
-    print("\n➕ Testing trade creation...")
+    # Test 5: Create sample crypto trades
+    print("\n➕ Testing crypto trade creation...")
     
-    sample_trades = [
+    sample_crypto_trades = [
         {
-            "symbol": "AAPL",
-            "entry_price": 150.00,
-            "exit_price": 155.00,
-            "quantity": 100,
+            "pair": "BTC/USDT",
+            "entry_price": 45000.00,
+            "exit_price": 47000.00,
+            "usd_amount": 1000.00,
             "trade_date": "2024-01-15",
-            "strategy": "Swing Trading",
+            "strategy": "DCA",
             "trade_type": "Long",
-            "stop_loss": 145.00,
-            "take_profit": 160.00,
-            "notes": "Strong earnings report expected"
+            "stop_loss": 42000.00,
+            "take_profit": 50000.00,
+            "notes": "Bitcoin accumulation strategy"
         },
         {
-            "symbol": "TSLA",
-            "entry_price": 200.00,
-            "exit_price": 190.00,
-            "quantity": 50,
+            "pair": "ETH/USDT",
+            "entry_price": 2500.00,
+            "exit_price": 2400.00,
+            "usd_amount": 500.00,
             "trade_date": "2024-01-16",
-            "strategy": "Scalping",
+            "strategy": "Swing Trading",
             "trade_type": "Short",
-            "stop_loss": 205.00,
-            "take_profit": 185.00,
-            "notes": "Overvalued, expecting correction"
+            "stop_loss": 2600.00,
+            "take_profit": 2300.00,
+            "notes": "Expecting correction after pump"
         },
         {
-            "symbol": "MSFT",
-            "entry_price": 300.00,
+            "pair": "SOL/USDT",
+            "entry_price": 100.00,
             "exit_price": None,  # Open position
-            "quantity": 75,
+            "usd_amount": 300.00,
             "trade_date": "2024-01-17",
-            "strategy": "Long Term Hold",
+            "strategy": "HODLing",
             "trade_type": "Long",
-            "stop_loss": 280.00,
-            "take_profit": 350.00,
-            "notes": "Strong fundamentals, holding long term"
+            "stop_loss": 85.00,
+            "take_profit": 150.00,
+            "notes": "Long term Solana investment"
         }
     ]
     
     created_ids = []
-    for trade in sample_trades:
-        trade_id = tester.test_create_trade(trade)
+    for trade in sample_crypto_trades:
+        trade_id = tester.test_create_crypto_trade(trade)
         if trade_id:
             created_ids.append(trade_id)
     
-    # Test 5: Get trades after creation
+    # Test 6: Get trades after creation
     print("\n📋 Testing trades list after creation...")
     success, trades_response = tester.test_get_trades()
     if success:
         print(f"   Found {trades_response.get('total', 0)} trades")
+        # Verify USD amount and calculated quantity
+        if 'trades' in trades_response:
+            for trade in trades_response['trades']:
+                expected_quantity = trade['usd_amount'] / trade['entry_price']
+                actual_quantity = trade['quantity']
+                print(f"   Trade {trade['pair']}: USD ${trade['usd_amount']} -> Quantity {actual_quantity:.8f} (Expected: {expected_quantity:.8f})")
     
-    # Test 6: Test individual trade retrieval
+    # Test 7: Test individual trade retrieval
     if created_ids:
         print("\n🔍 Testing individual trade retrieval...")
         tester.test_get_trade_by_id(created_ids[0])
     
-    # Test 7: Test trade update
+    # Test 8: Test trade update (test quantity recalculation)
     if created_ids:
-        print("\n✏️ Testing trade update...")
+        print("\n✏️ Testing trade update with quantity recalculation...")
         update_data = {
-            "exit_price": 158.00,
-            "notes": "Updated exit price after market close"
+            "exit_price": 48000.00,
+            "usd_amount": 1200.00,  # Changed USD amount should recalculate quantity
+            "notes": "Updated USD amount and exit price"
         }
         tester.test_update_trade(created_ids[0], update_data)
     
-    # Test 8: Test filtering and search
-    print("\n🔍 Testing search and filters...")
+    # Test 9: Test filtering and search for crypto pairs
+    print("\n🔍 Testing crypto-specific search and filters...")
     
-    # Search by symbol
-    tester.test_get_trades({"search": "AAPL"})
+    # Search by crypto pair
+    tester.test_get_trades({"search": "BTC/USDT"})
     
     # Filter by trade type
     tester.test_get_trades({"trade_type": "Long"})
     
     # Filter by strategy
-    tester.test_get_trades({"strategy": "Swing"})
+    tester.test_get_trades({"strategy": "DCA"})
     
     # Test pagination
     tester.test_get_trades({"page": "1", "limit": "2"})
@@ -228,20 +260,22 @@ def main():
     # Test sorting
     tester.test_get_trades({"sort_by": "pnl", "sort_order": "desc"})
     
-    # Test 9: Get updated stats
-    print("\n📊 Testing updated stats...")
+    # Test 10: Get updated stats (should include ROI and Total Invested)
+    print("\n📊 Testing updated crypto stats...")
     success, stats = tester.test_get_stats()
     if success:
         print(f"   Total Trades: {stats.get('total_trades', 0)}")
         print(f"   Total P&L: ${stats.get('total_pnl', 0)}")
+        print(f"   Total Invested: ${stats.get('total_invested', 0)}")
         print(f"   Win Rate: {stats.get('win_rate', 0)}%")
+        print(f"   ROI: {stats.get('roi', 0)}%")
     
-    # Test 10: Test trade deletion
+    # Test 11: Test trade deletion
     if created_ids and len(created_ids) > 1:
         print("\n🗑️ Testing trade deletion...")
         tester.test_delete_trade(created_ids[-1])  # Delete last created trade
     
-    # Test 11: Verify deletion worked
+    # Test 12: Verify deletion worked
     if created_ids and len(created_ids) > 1:
         print("\n✅ Verifying deletion...")
         success, _ = tester.test_get_trade_by_id(created_ids[-1])
@@ -250,7 +284,7 @@ def main():
             tester.tests_passed += 1
         tester.tests_run += 1
     
-    # Test 12: Test error cases
+    # Test 13: Test error cases
     print("\n❌ Testing error cases...")
     
     # Test getting non-existent trade
@@ -264,9 +298,9 @@ def main():
     
     # Test creating trade with invalid data
     invalid_trade = {
-        "symbol": "",  # Empty symbol should fail
+        "pair": "",  # Empty pair should fail
         "entry_price": "invalid",  # Invalid price
-        "quantity": -10  # Negative quantity
+        "usd_amount": -100  # Negative amount
     }
     tester.run_test(
         "Create Invalid Trade",
