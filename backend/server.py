@@ -98,7 +98,12 @@ async def create_trade(trade: TradeCreate):
         else:  # SHORT
             trade_obj.pnl = (trade_obj.entry_price - trade_obj.exit_price) * trade_obj.quantity
     
-    result = await db.trades.insert_one(trade_obj.dict())
+    # Convert trade_obj to dict and handle date serialization
+    trade_data = trade_obj.dict()
+    if isinstance(trade_data['trade_date'], date):
+        trade_data['trade_date'] = trade_data['trade_date'].isoformat()
+    
+    result = await db.trades.insert_one(trade_data)
     if result.inserted_id:
         return trade_obj
     raise HTTPException(status_code=500, detail="Failed to create trade")
