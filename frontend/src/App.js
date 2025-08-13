@@ -237,6 +237,209 @@ const TradeJournal = () => {
                   Add Trade
                 </Button>
               </DialogTrigger>
+              
+              {/* Add/Edit Trade Modal */}
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-slate-200">
+                <DialogHeader>
+                  <DialogTitle className="text-slate-900">
+                    {editingTrade ? 'Edit Trade' : 'Add New Trade'}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-600">
+                    {editingTrade ? 'Update your trade details below.' : 'Enter the details of your trade below.'}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="symbol" className="text-slate-700">Symbol *</Label>
+                      <Input
+                        id="symbol"
+                        placeholder="e.g., AAPL"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.symbol}
+                        onChange={(e) => setFormData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="trade_type" className="text-slate-700">Trade Type *</Label>
+                      <Select value={formData.trade_type} onValueChange={(value) => setFormData(prev => ({ ...prev, trade_type: value }))}>
+                        <SelectTrigger className="border-slate-300 focus:border-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Long">Long</SelectItem>
+                          <SelectItem value="Short">Short</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="entry_price" className="text-slate-700">Entry Price *</Label>
+                      <Input
+                        id="entry_price"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.entry_price}
+                        onChange={(e) => setFormData(prev => ({ ...prev, entry_price: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="exit_price" className="text-slate-700">Exit Price</Label>
+                      <Input
+                        id="exit_price"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.exit_price}
+                        onChange={(e) => setFormData(prev => ({ ...prev, exit_price: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="quantity" className="text-slate-700">Quantity *</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        placeholder="100"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.quantity}
+                        onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-700">Trade Date *</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal border-slate-300 hover:bg-slate-50"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.trade_date ? format(formData.trade_date, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-white border-slate-200" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.trade_date}
+                            onSelect={(date) => setFormData(prev => ({ ...prev, trade_date: date }))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="strategy" className="text-slate-700">Strategy *</Label>
+                      <Input
+                        id="strategy"
+                        placeholder="e.g., Scalping, Swing Trading"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.strategy}
+                        onChange={(e) => setFormData(prev => ({ ...prev, strategy: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="pnl" className="text-slate-700">P&L</Label>
+                      <Input
+                        id="pnl"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.pnl}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="stop_loss" className="text-slate-700">Stop Loss</Label>
+                      <Input
+                        id="stop_loss"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.stop_loss}
+                        onChange={(e) => setFormData(prev => ({ ...prev, stop_loss: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="take_profit" className="text-slate-700">Take Profit</Label>
+                      <Input
+                        id="take_profit"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="border-slate-300 focus:border-blue-500"
+                        value={formData.take_profit}
+                        onChange={(e) => setFormData(prev => ({ ...prev, take_profit: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="notes" className="text-slate-700">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Add any additional notes about this trade..."
+                      className="border-slate-300 focus:border-blue-500"
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="image" className="text-slate-700">P&L Chart (Optional)</Label>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      className="border-slate-300 focus:border-blue-500"
+                      onChange={handleImageUpload}
+                    />
+                    {formData.image_data && (
+                      <div className="mt-2">
+                        <img src={formData.image_data} alt="Trade chart" className="max-w-xs h-auto rounded-lg border border-slate-200" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        resetForm();
+                        setIsModalOpen(false);
+                      }}
+                      className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                    >
+                      {loading ? 'Saving...' : (editingTrade ? 'Update Trade' : 'Add Trade')}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
             </Dialog>
           </div>
         </div>
