@@ -530,12 +530,12 @@ const TradeJournal = () => {
               
               <div>
                 <Label htmlFor="trade-type-filter" className="text-slate-700">Trade Type</Label>
-                <Select value={filters.trade_type} onValueChange={(value) => setFilters(prev => ({ ...prev, trade_type: value }))}>
+                <Select value={filters.trade_type} onValueChange={(value) => setFilters(prev => ({ ...prev, trade_type: value === "all" ? "" : value }))}>
                   <SelectTrigger className="border-slate-300 focus:border-blue-500">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="Long">Long</SelectItem>
                     <SelectItem value="Short">Short</SelectItem>
                   </SelectContent>
