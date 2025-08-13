@@ -191,6 +191,10 @@ async def update_trade(trade_id: str, trade_update: TradeUpdate):
     update_data = {k: v for k, v in trade_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
+    # Handle date serialization
+    if "trade_date" in update_data and isinstance(update_data["trade_date"], date):
+        update_data["trade_date"] = update_data["trade_date"].isoformat()
+    
     # Recalculate P&L if prices are updated
     if "exit_price" in update_data or "entry_price" in update_data or "quantity" in update_data:
         entry_price = update_data.get("entry_price", existing_trade["entry_price"])
