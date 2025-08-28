@@ -14,7 +14,7 @@ This is a full-stack web application that serves as a trading journal for crypto
 ## Tech Stack
 
 *   **Backend:** Python, FastAPI, Uvicorn
-*   **Database:** MongoDB (with Motor for async access)
+*   **Database:** Supabase (PostgreSQL)
 *   **Frontend:** React (with Create React App and Craco), JavaScript, Tailwind CSS
 *   **Libraries:**
     *   Backend: Pydantic, Pandas, Numpy
@@ -28,13 +28,37 @@ Before you begin, ensure you have the following installed:
 *   [Yarn](https://yarnpkg.com/)
 *   [Python](https://www.python.org/) (v3.8 or later)
 *   [Pip](https://pip.pypa.io/en/stable/installation/)
-*   [MongoDB](https://www.mongodb.com/try/download/community)
+*   A [Supabase](https://supabase.com/) account.
 
 ## Local Development Setup
 
-To run this application on your local machine, follow these steps:
+### 1. Supabase Project Setup
 
-### 1. Clone the Repository
+1.  Go to [supabase.com](https://supabase.com/) and create a new project.
+2.  Navigate to the "SQL Editor" and run the following script to create the `crypto_trades` table:
+    ```sql
+    CREATE TABLE crypto_trades (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pair TEXT NOT NULL,
+        entry_price REAL NOT NULL,
+        exit_price REAL,
+        usd_amount REAL NOT NULL,
+        quantity REAL NOT NULL,
+        trade_date DATE NOT NULL,
+        pnl REAL,
+        strategy TEXT NOT NULL,
+        trade_type TEXT NOT NULL,
+        stop_loss REAL,
+        take_profit REAL,
+        notes TEXT,
+        image_data TEXT, -- For base64 encoded strings
+        created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+    );
+    ```
+3.  Go to "Project Settings" > "API" and find your Project URL and `anon` public key.
+
+### 2. Clone the Repository
 
 ```bash
 git clone <repository-url>
@@ -51,9 +75,10 @@ cd backend
 pip install -r requirements.txt
 
 # Set up environment variables
-# Create a .env file in the backend/ directory and add the following:
-# MONGO_URL="mongodb://localhost:27017"
-# DB_NAME="trading_journal"
+# Create a .env file in the backend/ directory and add the following,
+# replacing with your Supabase URL and anon key:
+# SUPABASE_URL="YOUR_SUPABASE_URL"
+# SUPABASE_KEY="YOUR_SUPABASE_ANON_KEY"
 # CORS_ORIGINS="http://localhost:3000"
 
 # Start the backend server
@@ -89,8 +114,8 @@ To deploy this application to a production server, you will need to:
     ```bash
     gunicorn -w 4 -k uvicorn.workers.UvicornWorker server:app
     ```
-*   **Database:** Ensure the `MONGO_URL` environment variable is set to your production MongoDB instance.
-*   **CORS:** Update the `CORS_ORIGINS` environment variable to the domain of your frontend application.
+*   **Database:** Ensure the `SUPABASE_URL` and `SUPABASE_KEY` environment variables are set to your production Supabase project's URL and key.
+*   **CORS:** Update the `CORS_ORIGINS` environment variable to the domain of your deployed frontend application.
 *   **Environment Variables:** It is recommended to use a secret management system to handle your environment variables in production.
 
 ### 2. Frontend Deployment
