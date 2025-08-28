@@ -130,6 +130,15 @@ def calculate_pnl(trade_type: str, entry_price: float, exit_price: float, quanti
     else:  # SHORT
         return (entry_price - exit_price) * quantity
 
+@app.on_event("startup")
+async def startup_db_client():
+    with open("/tmp/db_debug.log", "w") as f:
+        try:
+            await client.admin.command('ping')
+            f.write("Successfully connected to MongoDB.")
+        except Exception as e:
+            f.write(f"Failed to connect to MongoDB: {e}")
+
 # Crypto Trade Routes
 @api_router.post("/trades", response_model=CryptoTrade)
 async def create_trade(trade: CryptoTradeCreate):
